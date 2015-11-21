@@ -59,12 +59,14 @@ class Experiment(object):
             tmp = param_2
             param_2 = param_1
             param_1 = tmp
+        if param_id_2 == 2:
+            param_2 = param_2.strftime("%Y-%m-%d")
         return {"01": "Precision, recall and f-score when training data consists %s days and \n"
                       "testing data consists %s days of all users track behaviour" % (param_1, param_2),
                 "02": "Precision, recall and f-score when training data consists %s days of all users \n"
-                      "track behaviour and testing data finish date is %s" % (param_1, param_2.strftime("%Y-%m-%d")),
+                      "track behaviour and testing data finish date is %s" % (param_1, param_2),
                 "12": "Precision, recall and f-score when testing data consists %s days of all users \n"
-                      "track behaviour and testing data finish date is %s" % (param_1, param_2.strftime("%Y-%m-%d"))
+                      "track behaviour and testing data finish date is %s" % (param_1, param_2)
                 }["%s%s" % (param_id_1, param_id_2)]
 
     def create_x_label(self, param_id):
