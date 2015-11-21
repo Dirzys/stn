@@ -12,6 +12,23 @@ class Model(object):
     def get_unique_user_tracks(self, dataframe):
         return dataframe[['user_id', 'track_id']].drop_duplicates().values
 
+    def get_unique_tracks(self, dataframe):
+        return dataframe['track_id'].drop_duplicates().values
+
+    def get_unique_users(self, dataframe):
+        return dataframe['user_id'].drop_duplicates().values
+
+    def predict_all_previous_tracks(self):
+        all_tracks = self.get_unique_tracks(self.training_data)
+        all_users = self.get_unique_users(self.training_data)
+        return self.to_same_user_track_map(all_tracks, all_users)
+
+    def to_same_user_track_map(self, predicted_tracks, users):
+        user_track_map = {}
+        for user in users:
+            user_track_map[user] = predicted_tracks
+        return user_track_map
+
     def predict_user_previous_tracks(self):
         return self.to_user_track_map(self.get_unique_user_tracks(self.training_data))
 
@@ -26,6 +43,7 @@ class Model(object):
 
     def predict(self):
         self.predicted_tracks = {
+            'all_previous_tracks': self.predict_all_previous_tracks,
             'user_previous_tracks': self.predict_user_previous_tracks
         }[self.type]()
 
