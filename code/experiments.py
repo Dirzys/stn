@@ -75,3 +75,43 @@ class Experiment(object):
                 2: "Testing data finish date"}[param_id]
 
 
+class NMostOftenExperiment(object):
+    def __init__(self, training_length, testing_length, finish_testing, data, exp_id, n_values):
+        _ = data.create_experiment_data(training_length, testing_length, finish_testing, exp_id, True)
+        self.training_length = training_length
+        self.testing_length = testing_length
+        self.finish_testing = finish_testing
+        self.n_values = n_values
+        self.data = data
+        self.exp_id = exp_id
+
+    def run(self):
+        scores = []
+        score_for_average = None
+        n_values = self.n_values[1:] if self.n_values[0] == 0 else self.n_values
+        for n in self.n_values:
+            model = Model('n_most_often', self.data, self.exp_id, n)
+            score = model.run(pprint=False)
+            if n == 0:
+                score_for_average = score
+            else:
+                scores.append(score)
+
+        precisions, recalls, f_scores = zip(*scores)
+        plt.plot(n_values, precisions, 'b-', label="Precision")
+        plt.plot(n_values, recalls, 'g-', label="Recall")
+        plt.plot(n_values, f_scores, 'r-', label="F-score")
+        xmin = 0
+        xmax = 1
+        plt.axhline(score_for_average[0], xmin=xmin, xmax=xmax, color="b", linestyle="--")
+        plt.axhline(score_for_average[1], xmin=xmin, xmax=xmax, color="g", linestyle="--")
+        plt.axhline(score_for_average[2], xmin=xmin, xmax=xmax, color="r", linestyle="--")
+        plt.title("Precision, recall and f-score when training data consists %s days and \n "
+                  "testing data consists %s days of all users track behaviour \n"
+                  "and testing data finish date is %s" %
+                  (self.training_length, self.testing_length, self.finish_testing.strftime("%Y-%m-%d")))
+        plt.xlabel("The number of most frequently listened tracks for each user to be predicted")
+        plt.legend(loc='best')
+        plt.show()
+
+
