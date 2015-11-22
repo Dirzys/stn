@@ -5,13 +5,14 @@ import math
 
 class Model(object):
 
-    def __init__(self, type, data, experiment_id, n_most_often=None):
+    def __init__(self, type, data, experiment_id, n_most_often=None, cluster=None):
         self.type = type
         self.training_data = data.get_training_data(experiment_id)
         self.testing_data = data.get_testing_data(experiment_id)
         self.norm_scalier = data.get_norm_scalier(experiment_id)
         self.training_partitions = data.get_training_partitions(experiment_id)
         self.n_most_often = n_most_often
+        self.cluster = cluster
         self.predicted_tracks = None
 
     def get_unique_user_tracks(self, dataframe):
@@ -64,7 +65,7 @@ class Model(object):
         merged = pd.merge(self.training_data, self.on_average_user_listened_songs(), on='user_id')
 
         def select_n_most_frequent(group):
-            key = int(math.ceil(group.iloc[0][0]))
+            key = int(round(group.iloc[0][0]))
             return self.select_n_most_frequent(group, key)
 
         return merged.groupby([0]).apply(select_n_most_frequent)
@@ -78,11 +79,44 @@ class Model(object):
             prediction = self.select_n_most_frequent(self.training_data, self.n_most_often)
         return self.to_user_track_map(prediction[['user_id', 'track_id']].values)
 
+    def user_cluster_frequency(self):
+        if self.training_partitions is None:
+            raise Exception("Training data is not partitioned!")
+        user_unique_tracks = pd.concat([self.get_unique_user_tracks(partition) for partition in self.training_partitions])
+
+        def map_to_cluster(track_id):
+            return self.cluster.tracks_map[track_id]['cluster_id']
+
+        user_unique_tracks['cluster_id'] = user_unique_tracks['track_id'].apply(map_to_cluster)
+        user_tracks_from_cluster_counts = user_unique_tracks.groupby(['user_id', 'cluster_id']).size().reset_index()
+        user_tracks_from_cluster_counts[0] = user_tracks_from_cluster_counts[0]*self.norm_scalier
+        user_tracks_from_cluster_counts = user_tracks_from_cluster_counts[user_tracks_from_cluster_counts[0] >= 0.5]
+        return user_tracks_from_cluster_counts
+
+    def get_tracks_from_cluster_randomly(self, user_cluster_frequency):
+        user_track_map = {}
+        for user_cluster in user_cluster_frequency:
+            user_id, cluster_id, track_count = user_cluster
+            if user_id not in user_track_map:
+                user_track_map[user_id] = []
+            user_track_map[user_id].extend(self.cluster.clusters[cluster_id][:int(round(track_count))])
+
+        return user_track_map
+
+    def predict_from_clusters(self):
+        # Calculate each user cluster frequency per testing data's period
+        # meaning that we will predict that number of songs for each user from that cluster
+        user_cluster_frequency = self.user_cluster_frequency().values
+        # Pick randomly from the cluster
+        predicted_tracks = self.get_tracks_from_cluster_randomly(user_cluster_frequency)
+        return predicted_tracks
+
     def predict(self):
         self.predicted_tracks = {
             'all_previous_tracks': self.predict_all_previous_tracks,
             'user_previous_tracks': self.predict_user_previous_tracks,
-            'n_most_often': self.predict_n_most_often
+            'n_most_often': self.predict_n_most_often,
+            'from_clusters': self.predict_from_clusters
         }[self.type]()
 
     def evaluate(self, name, pprint):

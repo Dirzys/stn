@@ -14,7 +14,7 @@ class TrackClustering(object):
         self.cons_listened_counts = None
         self.song_network = None
         self.labels = None
-        self.clusters = None
+        self.clusters = {}
 
     def prepare(self):
         # Helper dataframe where all listened songs are shifted once so that it can be concatenated
@@ -96,17 +96,17 @@ class TrackClustering(object):
 
     def cluster(self):
         # Cluster the tracks network using Clauset-Newman-Moore community detection method
-        self.clusters = snap.TCnComV()
-        modularity = snap.CommunityCNM(self.song_network, self.clusters)
+        network_clusters = snap.TCnComV()
+        modularity = snap.CommunityCNM(self.song_network, network_clusters)
         print "The modularity of the network is %f" % modularity
 
         # Append cluster ids to all tracks in tracks map
-        clusters = {}
-        for i, cluster in enumerate(self.clusters):
-            clusters[i] = cluster
+        for i, cluster in enumerate(network_clusters):
+            self.clusters[i] = []
             for int_id in cluster:
                 track_id = self.labels[int_id]
                 self.tracks_map[track_id]['cluster_id'] = i
+                self.clusters[i].append(track_id)
 
     def run(self, plot_similarities=False):
         self.prepare()

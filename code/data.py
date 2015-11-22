@@ -55,7 +55,7 @@ class Data(object):
         return self.experiments[experiment_id]['norm_scalier']
 
     def get_training_partitions(self, experiment_id):
-        if self.experiments[experiment_id]['training_partitions']:
+        try:
             return self.experiments[experiment_id]['training_partitions']
-        else:
+        except KeyError:
             return None
