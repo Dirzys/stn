@@ -114,3 +114,8 @@ class TrackClustering(object):
             self.plot_similarities()
         self.create_network()
         self.cluster()
+
+    def get_common_neighbors(self, node_id_1, node_id_2):
+        Nbrs = snap.TIntV()
+        n = snap.GetCmnNbrs(self.song_network, node_id_1, node_id_2, Nbrs)
+        return list(Nbrs)

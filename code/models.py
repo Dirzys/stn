@@ -82,6 +82,12 @@ class Model(object):
     def map_to_cluster(self, track_id):
         return self.cluster.tracks_map[track_id]['cluster_id']
 
+    def map_to_track_int_id(self, track_id):
+        return self.cluster.tracks_map[track_id]['int_id']
+
+    def map_to_track_id(self, track_int_id):
+        return self.cluster.labels[track_int_id]
+
     def user_cluster_frequency(self):
         if self.training_partitions is None:
             raise Exception("Training data is not partitioned!")
@@ -150,6 +156,43 @@ class Model(object):
         prediction = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
         return self.to_user_track_map(prediction[['user_id', 'track_id']].values)
 
+    def predict_from_clusters_by_common_neighbors(self):
+        user_cluster_frequency = self.user_cluster_frequency()
+        predicted_by_freq = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
+        prediction = predicted_by_freq[['track_id']].reset_index()[['user_id', 'cluster_id', 'track_id']]
+
+        prediction['track_int_id'] = prediction['track_id'].apply(self.map_to_track_int_id)
+
+        merged = pd.merge(prediction, prediction, on=['user_id', 'cluster_id'])
+        merged = merged[merged['track_int_id_x'] != merged['track_int_id_y']]
+
+        all_neighbors = {}
+
+        def get_common_neighbors(two_tracks_in_cluster):
+            track_int_id_1 = two_tracks_in_cluster['track_int_id_x']
+            track_int_id_2 = two_tracks_in_cluster['track_int_id_y']
+            user_id = two_tracks_in_cluster['user_id']
+            neighbors = self.cluster.get_common_neighbors(track_int_id_1, track_int_id_2)
+            if user_id not in all_neighbors:
+                all_neighbors[user_id] = []
+            all_neighbors[user_id].extend(neighbors)
+
+        _ = merged.apply(get_common_neighbors, axis=1)
+
+        for user in all_neighbors:
+            unique_neighbors = list(set(all_neighbors[user]))
+            all_neighbors[user] = [self.map_to_track_id(neighbor) for neighbor in unique_neighbors]
+
+        predicted_by_freq_values = self.to_user_track_map(predicted_by_freq[['user_id', 'track_id']].values)
+
+        for user in predicted_by_freq_values:
+            if user in all_neighbors and len(all_neighbors[user]) > 0 and len(predicted_by_freq_values[user]) > 0:
+                predicted_by_freq_values[user].extend(all_neighbors[user])
+                predicted_by_freq_values[user] = list(set(predicted_by_freq_values[user]))
+
+        return predicted_by_freq_values
+        #return all_neighbors
+
     def predict(self):
         self.predicted_tracks = {
             'all_previous_tracks': self.predict_all_previous_tracks,
@@ -158,6 +201,7 @@ class Model(object):
             'from_clusters_randomly': self.predict_from_clusters,
             'from_clusters_all': self.return_all_from_clusters,
             'from_cluster_by_user_track_freq': self.predict_from_clusters_by_user_track_freq,
+            'from_cluster_by_common_neighbors': self.predict_from_clusters_by_common_neighbors,
         }[self.type]()
 
     def evaluate(self, name, pprint):
