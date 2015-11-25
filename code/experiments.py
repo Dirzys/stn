@@ -1,25 +1,24 @@
-from code.models import Model
 from datetime import timedelta
 import matplotlib.pyplot as plt
-
+from models import NMostOften
 
 class DataExperiment(object):
     """
     DataExperiment class tries different training and testing data slices for given model type
     """
-    def __init__(self, training_lengths, testing_lengths, testing_finish_dates, type):
+    def __init__(self, training_lengths, testing_lengths, testing_finish_dates, model):
         """
         Initialise the experiment by providing parameter values for training, testing data lengths,
         when the testing data finishes and model type
         :param training_lengths: list of int representing training data length in days
         :param testing_lengths: list of int representing testing data length in days
         :param testing_finish_dates: list of datetime objects representing when the testing data finishes
-        :param type: string representing model type
+        :param model: model class to be ran
         """
         self.training_lengths = training_lengths
         self.testing_lengths = testing_lengths
         self.testing_finish_dates = testing_finish_dates
-        self.type = type
+        self.model = model
         self.scores = []
 
     def run(self, data, exp_id, as_graph=True):
@@ -34,7 +33,7 @@ class DataExperiment(object):
             for testing_length in self.testing_lengths:
                 for finish_testing in self.testing_finish_dates:
                     _ = data.create_experiment_data(training_length, testing_length, finish_testing, exp_id)
-                    model = Model(self.type, data, exp_id)
+                    model = self.model(data, exp_id)
                     begin_testing = finish_testing - timedelta(days=testing_length)
                     begin_training = (begin_testing - timedelta(days=training_length)).strftime("%Y-%m-%d")
                     score = model.run("Training from %s (%s days), testing from %s (%s days)" %
@@ -144,7 +143,7 @@ class NMostOftenExperiment(object):
         At the end the graph is plotted.
         """
         for n in self.n_values:
-            model = Model('n_most_often', self.data, self.exp_id, n)
+            model = NMostOften('n_most_often', self.data, self.exp_id, n)
             score = model.run(pprint=False)
             if n == 0:
                 self.score_for_average = score
