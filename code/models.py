@@ -1,6 +1,6 @@
 from evaluation import Evaluator
 import pandas as pd
-import math
+import random
 
 
 class Model(object):
@@ -129,6 +129,7 @@ class Model(object):
         for user_cluster in user_cluster_frequency:
             try:
                 user_id, cluster_id, track_count = user_cluster
+                random.shuffle(self.cluster.clusters[cluster_id])
             except ValueError:
                 user_id, cluster_id = user_cluster
                 track_count = len(self.cluster.clusters[cluster_id])
@@ -156,6 +157,15 @@ class Model(object):
         prediction = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
         return self.to_user_track_map(prediction[['user_id', 'track_id']].values)
 
+    def get_common_neighbors(self, two_tracks_in_cluster, all_neighbors):
+        track_int_id_1 = two_tracks_in_cluster['track_int_id_x']
+        track_int_id_2 = two_tracks_in_cluster['track_int_id_y']
+        user_id = two_tracks_in_cluster['user_id']
+        neighbors = self.cluster.get_common_neighbors(track_int_id_1, track_int_id_2)
+        if user_id not in all_neighbors:
+            all_neighbors[user_id] = []
+        all_neighbors[user_id].extend(neighbors)
+
     def predict_from_clusters_by_common_neighbors(self):
         user_cluster_frequency = self.user_cluster_frequency()
         predicted_by_freq = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
@@ -168,16 +178,7 @@ class Model(object):
 
         all_neighbors = {}
 
-        def get_common_neighbors(two_tracks_in_cluster):
-            track_int_id_1 = two_tracks_in_cluster['track_int_id_x']
-            track_int_id_2 = two_tracks_in_cluster['track_int_id_y']
-            user_id = two_tracks_in_cluster['user_id']
-            neighbors = self.cluster.get_common_neighbors(track_int_id_1, track_int_id_2)
-            if user_id not in all_neighbors:
-                all_neighbors[user_id] = []
-            all_neighbors[user_id].extend(neighbors)
-
-        _ = merged.apply(get_common_neighbors, axis=1)
+        _ = merged.apply(self.get_common_neighbors, args=(all_neighbors,), axis=1)
 
         for user in all_neighbors:
             unique_neighbors = list(set(all_neighbors[user]))
@@ -190,8 +191,20 @@ class Model(object):
                 predicted_by_freq_values[user].extend(all_neighbors[user])
                 predicted_by_freq_values[user] = list(set(predicted_by_freq_values[user]))
 
-        return predicted_by_freq_values
-        #return all_neighbors
+        #return predicted_by_freq_values
+        return all_neighbors
+
+    def predict_by_common_neighbors(self):
+        prediction = self.predict_average_most_often()[['user_id', 'track_id']]
+        prediction['track_int_id'] = prediction['track_id'].apply(self.map_to_track_int_id)
+        merged = pd.merge(prediction, prediction, on=['user_id'])
+        merged = merged[merged['track_int_id_x'] != merged['track_int_id_y']]
+        all_neighbors = {}
+        _ = merged.apply(self.get_common_neighbors, args=(all_neighbors,), axis=1)
+        for user in all_neighbors:
+            unique_neighbors = list(set(all_neighbors[user]))
+            all_neighbors[user] = [self.map_to_track_id(neighbor) for neighbor in unique_neighbors]
+        return all_neighbors
 
     def predict(self):
         self.predicted_tracks = {
@@ -202,6 +215,7 @@ class Model(object):
             'from_clusters_all': self.return_all_from_clusters,
             'from_cluster_by_user_track_freq': self.predict_from_clusters_by_user_track_freq,
             'from_cluster_by_common_neighbors': self.predict_from_clusters_by_common_neighbors,
+            'by_common_neighbors': self.predict_by_common_neighbors
         }[self.type]()
 
     def evaluate(self, name, pprint):

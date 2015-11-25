@@ -2,11 +2,17 @@ import numpy
 
 
 class Evaluator(object):
-
-    def __init__(self):
-        pass
-
+    """
+    Evaluation class that scores predicted tracks against true tracks and pprints the scores
+    """
     def score(self, predicted_tracks, true_tracks):
+        """
+        Calculate the precision, recall and f-score metrics for each user and find the average.
+        Inputs must be dictionaries in the following format: {user_id_1: [track_id_1, track_id_2, ...], user_id_2: ...}
+        :param predicted_tracks: dictionary of unique tracks predicted for each user
+        :param true_tracks: dictionary of unique tracks listened by each user
+        :return: average precision, recall and f-score metrics as floats
+        """
         total_users = len(predicted_tracks)
         total_precision = 0
         total_recall = 0
@@ -26,6 +32,10 @@ class Evaluator(object):
         return total_precision/total_users, total_recall/total_users, total_f_score/total_users
 
     def pprint_scores(self, (precision, recall, f_score), type):
+        """
+        Given precision, recall and f_score pprint them.
+        :param type: Type of the model
+        """
         print "==== %s ====" % type
         print "Model precision: %s" % precision
         print "Model recall: %s" % recall
