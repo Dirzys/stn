@@ -180,14 +180,15 @@ class NMostOftenExperiment(object):
                   (self.training_length, self.testing_length, self.finish_testing.strftime("%Y-%m-%d"), average_string))
         plt.xlabel("The number of most frequently listened tracks for each user to be predicted")
         plt.legend(loc='best')
+        #plt.savefig("NMostOften-%s-%s" % (self.training_length, self.testing_length))
         plt.show()
 
 
 class ClusteringExperiment(NMostOftenExperiment):
     """
     ClusteringExperiment runs both NFromCluster ('all' and 'top') and CommonNeighborsWithinCluster models with
-    given maximum allowed time difference between two tracks to be included into similarity calculation (mins) value
-    and draws a separate graph for each model.
+    given minimum similarity between two tracks to be considered as similar value and draws a separate graph
+    for each model.
     """
     def run(self):
         self.scores = [[], [], []]
@@ -219,8 +220,7 @@ class ClusteringExperiment(NMostOftenExperiment):
             plt.title("Precision, recall and f-score for %s model when training data consists %s days and \n"
                       "testing data consists %s days of all users track behaviour and testing data finish date is %s" %
                       (models[i], self.training_length, self.testing_length, self.finish_testing.strftime("%Y-%m-%d")))
-            plt.xlabel("Maximum allowed time difference between two tracks "
-                       "to be included into similarity calculation (mins)")
+            plt.xlabel("Minimum similarity between two tracks to be considered as similar")
             plt.legend(loc='best')
             plt.show()
 

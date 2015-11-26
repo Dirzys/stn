@@ -14,7 +14,7 @@ class Data(object):
         :param tracks_path: path to the dataset
         :return:
         """
-        self.tracks = pd.read_csv("dataset/%s" % tracks_path, nrows=None, sep='\t', header=None,
+        self.tracks = pd.read_csv(tracks_path, nrows=None, sep='\t', header=None,
                                   names=['user_id', 'timestamp', 'track_id', 'track_name'],
                                   parse_dates=[1], usecols=[0, 1, 4, 5], error_bad_lines=False,
                                   warn_bad_lines=True).dropna()
