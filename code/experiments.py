@@ -1,6 +1,8 @@
 from datetime import timedelta
 import matplotlib.pyplot as plt
-from models import NMostOften
+from models import *
+from code.clustering import TrackClustering
+
 
 class DataExperiment(object):
     """
@@ -143,7 +145,7 @@ class NMostOftenExperiment(object):
         At the end the graph is plotted.
         """
         for n in self.n_values:
-            model = NMostOften('n_most_often', self.data, self.exp_id, n)
+            model = NMostOften(self.data, self.exp_id, n_most_often=n)
             score = model.run(pprint=False)
             if n == 0:
                 self.score_for_average = score
@@ -179,5 +181,48 @@ class NMostOftenExperiment(object):
         plt.xlabel("The number of most frequently listened tracks for each user to be predicted")
         plt.legend(loc='best')
         plt.show()
+
+
+class ClusteringExperiment(NMostOftenExperiment):
+    """
+    ClusteringExperiment runs both NFromCluster ('all' and 'top') and CommonNeighborsWithinCluster models with
+    given maximum allowed time difference between two tracks to be included into similarity calculation (mins) value
+    and draws a separate graph for each model.
+    """
+    def run(self):
+        self.scores = [[], [], []]
+        models = ['NFromCluster-All', 'NFromCluster-Top', 'CommonNeighborsWithinCluster']
+        for n in self.n_values:
+            clustering = TrackClustering(self.data.get_training_data(self.exp_id), 60, n)
+            clustering.run()
+
+            model = NFromCluster(self.data, self.exp_id, cluster=clustering, from_clusters='all')
+            score = model.run(pprint=False)
+            self.scores[0].append(score)
+
+            model = NFromCluster(self.data, self.exp_id, cluster=clustering, from_clusters='top')
+            score = model.run(pprint=False)
+            self.scores[1].append(score)
+
+            model = CommonNeighborsWithinCluster(self.data, self.exp_id, cluster=clustering)
+            score = model.run(pprint=False)
+            self.scores[2].append(score)
+
+        self.draw_graph(models)
+
+    def draw_graph(self, models):
+        for i, scores in enumerate(self.scores):
+            precisions, recalls, f_scores = zip(*scores)
+            plt.plot(self.n_values, precisions, 'b-', label="Precision")
+            plt.plot(self.n_values, recalls, 'g-', label="Recall")
+            plt.plot(self.n_values, f_scores, 'r-', label="F-score")
+            plt.title("Precision, recall and f-score for %s model when training data consists %s days and \n"
+                      "testing data consists %s days of all users track behaviour and testing data finish date is %s" %
+                      (models[i], self.training_length, self.testing_length, self.finish_testing.strftime("%Y-%m-%d")))
+            plt.xlabel("Maximum allowed time difference between two tracks "
+                       "to be included into similarity calculation (mins)")
+            plt.legend(loc='best')
+            plt.show()
+
 
 

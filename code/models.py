@@ -174,9 +174,10 @@ class NFromCluster(Model):
     def predict(self):
         user_cluster_frequency = self.user_cluster_frequency()
         if self.from_clusters == 'all':
-            return self.get_all_tracks_from_clusters(user_cluster_frequency)
-        prediction = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
-        return self.to_user_track_map(prediction[['user_id', 'track_id']].values)
+            self.predicted_tracks = self.get_all_tracks_from_clusters(user_cluster_frequency)
+        if self.from_clusters == 'top':
+            prediction = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
+            self.predicted_tracks = self.to_user_track_map(prediction[['user_id', 'track_id']].values)
 
     def map_to_cluster(self, track_id):
         """
@@ -256,7 +257,7 @@ class CommonNeighborsWithinCluster(NFromCluster):
     def predict(self):
         user_cluster_frequency = self.user_cluster_frequency()
         predicted_by_freq = self.get_tracks_from_clusters_by_user_track_freq(user_cluster_frequency)
-        return self.predict_tracks(predicted_by_freq[['track_id']].reset_index()[['user_id', 'cluster_id', 'track_id']])
+        self.predicted_tracks = self.predict_tracks(predicted_by_freq[['track_id']].reset_index()[['user_id', 'cluster_id', 'track_id']])
 
     def predict_tracks(self, tracks, from_cluster=True):
         """
@@ -321,4 +322,4 @@ class CommonNeighbors(CommonNeighborsWithinCluster, NMostOften):
     Note: Not recommended to use on the big datasets as it is very slow
     """
     def predict(self):
-        return self.predict_tracks(self.predict_average_most_often()[['user_id', 'track_id']], from_cluster=False)
+        self.predicted_tracks = self.predict_tracks(self.predict_average_most_often()[['user_id', 'track_id']], from_cluster=False)

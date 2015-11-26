@@ -12,7 +12,7 @@ class TrackClustering(object):
     def __init__(self, training_data, maximum_diff, minimum_similarity=None):
         """
         Initialise the clustering object by providing training data, maximum allowed
-        time difference between to tracks to be included into similarity calculation (m hat) and
+        time difference between two tracks to be included into similarity calculation (m hat) and
         minimum similarity between two tracks to be considered as similar (s hat).
         :param training_data: dataframe consisting training data
         :param maximum_diff: int, minutes
